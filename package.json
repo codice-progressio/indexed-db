@@ -2,17 +2,47 @@
   "name": "@codice-progressio/indexed-db",
   "version": "0.2.0",
   "peerDependencies": {
-    "@angular/common": "^10.0.11",
-    "@angular/core": "^10.0.11"
+    "@angular/common": "^12.0.1",
+    "@angular/core": "^12.0.1"
   },
   "dependencies": {
     "tslib": "^2.0.0"
   },
-  "description": "This library was generated with [Angular CLI](https://github.com/angular/angular-cli) version 10.0.11.",
+  "description": "Indexed-db sencillo y ligero para angular.",
   "main": "karma.conf.js",
+
+
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\"",
+    "postversion": "rm -r dist && ng build modal --prod && mkdir dist && cp -r ../../dist/modal/* dist/ ",
+    "publicar": "np --contents=./dist"
   },
-  "author": "",
-  "license": "ISC"
+
+
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RafaelAngelRamirez/indexed-db.git"
+  },
+  "keywords": [
+    "indexed-db",
+    "angular"
+  ],
+  "author": "Rafael Ramirez",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/RafaelAngelRamirez/indexed-db/issues"
+  },
+  "homepage": "https://github.com/RafaelAngelRamirez/indexed-db#readme",
+  "publishConfig": {},
+  "np": {
+    "access": "public",
+    "contents": "./dist"
+  },
+  "module": "./dist/fesm2015/codice-progressio-indexed-db.js",
+  "es2015": "./dist/fesm2015/codice-progressio-indexed-db.js",
+  "esm2015": "./dist/esm2015/codice-progressio-indexed-db.js",
+  "fesm2015": "./dist/fesm2015/codice-progressio-indexed-db.js",
+  "typings": "./dist/codice-progressio-indexed-db.d.ts",
+  "metadata": "./dist/codice-progressio-indexed-db.metadata.json",
+  "sideEffects": false
 }
