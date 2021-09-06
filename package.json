@@ -10,15 +10,11 @@
   },
   "description": "Indexed-db sencillo y ligero para angular.",
   "main": "karma.conf.js",
-
-
   "scripts": {
     "test": "echo \"Error: no test specified\"",
     "postversion": "rm -r dist && ng build modal --prod && mkdir dist && cp -r ../../dist/modal/* dist/ ",
     "publicar": "np --contents=./dist"
   },
-
-
   "repository": {
     "type": "git",
     "url": "git+https://github.com/RafaelAngelRamirez/indexed-db.git"
