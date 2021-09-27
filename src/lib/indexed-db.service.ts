@@ -160,7 +160,9 @@ export class IndexedDBService {
 
         if (!hasSkipped) {
           hasSkipped = true;
-          cursor.advance(paginacion.skip + 1);
+          console.log("hay cursor", cursor)
+          // No se puede avanzar si no hay datos.
+          cursor?.advance(paginacion.skip + 1);
           return;
         }
 
@@ -278,11 +280,29 @@ export class IndexedDBService {
    * @param {IDBDatabase} db La BD que se inicializo previamente
    * @returns El total de elementos existentes en la tabla.
    * @memberof IndexedDBService
+   * @deprecated "Remplazar por contar datos"
    */
   contarDatosEnTabla(tabla: string, db: IDBDatabase) {
     return new Promise<number>((resolve, reject) => {
       this.objectStore(tabla, db).count().onsuccess = function (e) {
         resolve(e.target['result']);
+      };
+    });
+  }
+
+  contarDatos(tabla: string, db: IDBDatabase): Observable<number> {
+    return new Observable((subscriber) => {
+      this.consoleLog('[ COUNT ] Contando datos en tabla: ', tabla);
+      const request = this.objectStore(tabla, db).clear();
+
+      this.objectStore(tabla, db).count().onsuccess = function (e) {
+        subscriber.next(e.target['result']);
+        subscriber.complete();
+      };
+
+      request.onerror = (err) => {
+        console.error('[ COUNT ] Error en contarDatos: ', err);
+        subscriber.error(err);
       };
     });
   }
