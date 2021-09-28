@@ -8,10 +8,10 @@ Helper limpio y sencillo para Angular.
 
 ### Uso
 
-Agrega el modal en el modulo más alto que lo necesites.
+Agrega el modulo donde lo necesites.
 
 ```javascript
-import { IndexedDBModule } from "@codice-progressio/indexed-db";
+import { IndexedDBModule } from "@codice-progressio/indexed-db"
 
 @NgModule({
   declarations: [AppComponent],
@@ -29,20 +29,28 @@ export class AppModule {}
 >   IDBOpciones,
 >   IndexedDBService,
 >   IDBOpcionesObjectStore,
-> } from "@codice-progressio/indexed-db";
+> } from "@codice-progressio/indexed-db"
 > ```
 
 Inyecta `IndexedDBService` en el componente o servicio donde vayas a trabajar e inicializa la BD.
 
-> Este procedimiento se puede repetir las veces que sean necesarias para crear multiples bases de datos.
+> Es necesario crear varias instancias para poder manejar multiples BD.
 
 ```typescript
 
   constructor(private indexedDBService: IndexedDBService) {
     this.inicializarIndexedDB();
+
+    //Escuchamos si la BD esta lista.
+    this.escucharBD()
   }
 
-  baseDeDatos: IDBDatabase;
+  escucharBD() {
+    this.indexedDBService.db_event.subscribe((db) => {
+      this.cargarDatos(this.paginacion);
+    });
+  }
+
   inicializarIndexedDB() {
     //Habilita el debugueo.
     this.idb.debug = true;
@@ -60,7 +68,6 @@ Inyecta `IndexedDBService` en el componente o servicio donde vayas a trabajar e 
     ];
 
     this.idb.inicializar(opciones, tablas).subscribe((bd) => {
-      this.baseDeDatos = bd;
       console.log('Indexed-DB inicializado');
     });
   }
@@ -70,23 +77,32 @@ Inyecta `IndexedDBService` en el componente o servicio donde vayas a trabajar e 
 ## Grabar datos
 
 ```typescript
- agregarDato(nombre: string, telefono: string) {
-    let contacto: Contacto = {
-      id: Math.trunc(Math.random() * 10000000),
-      nombre,
-      telefono,
-    };
+  agregarDato(con: Contacto) {
+    console.log('agregar dato', con);
+    if (con.id) {
+      this.update(con);
+      return;
+    }
 
-    this.indexedDBService
-      .save<Contacto>(contacto, 'contactos', this.baseDeDatos)
-      .subscribe(
-        (servicio) => {
-          console.log('Se agrego un dato');
-          this.telefono = '';
-          this.nombre = '';
-        },
-        (err) => console.log(err)
-      );
+    con.id = Math.trunc(Math.random() * 10000000);
+    this.indexedDBService.save<Contacto>(con, 'contactos').subscribe(
+      (servicio) => {
+        //Reiniciamos el objeto por que no cambiamos de pagina
+        con.id = null;
+        con.nombre = '';
+        con.telefono = '';
+        this.contacto.telefono = '';
+        this.contacto.nombre = '';
+        //Contamos los datos de nuevo
+        this.indexedDBService.contarDatos('contactos').subscribe(
+          (total) => (this.total = total),
+          (err) => console.log(err)
+        );
+
+        this.cargarDatos(this.paginacion);
+      },
+      (err) => console.log(err)
+    );
   }
 ```
 
@@ -100,16 +116,18 @@ cantidad de datos a mostrar a si que la lista permite paginar por default
 
   paginacion = { skip: 0, limit: 2 };
 
-  cargarDatos(paginacion: Paginacion) {
+ cargarDatos(paginacion: Paginacion) {
     this.cargando = true;
     this.paginacion = paginacion;
     this.indexedDBService
-      .find<Contacto>('contactos', this.baseDeDatos, this.paginacion)
+      .find<Contacto>('contactos', this.paginacion)
       .subscribe(
         (datos) => {
-          this.datos = datos;
-          this.datosMostrar = this.datos;
+          this.datosMostrar = datos;
           this.cargando = false;
+          this.indexedDBService
+            .contarDatos('contactos')
+            .subscribe((total) => (this.total = total));
         },
         (err) => {
           console.log('error cargando todo', err);
@@ -141,7 +159,7 @@ Ejemplo de paginación
 ```typescript
   actualizar(contacto) {
     this.indexedDBService
-      .findById<Contacto>('contactos', this.baseDeDatos, contacto.id)
+      .findById<Contacto>('contactos', contacto.id)
       .subscribe((contact) => {
         this.contacto = contact;
       });
@@ -151,46 +169,43 @@ Ejemplo de paginación
 ## Modificar un registro
 
 ```typescript
-  update(contacto: Contacto) {
-    this.indexedDBService
-      .update<Contacto>(contacto, 'contactos', this.baseDeDatos)
-      .subscribe(() => {
-        this.contacto.id = undefined;
-        this.contacto.nombre = '';
-        this.contacto.telefono = '';
-        this.cargarDatos(this.paginacion);
-      });
+update(contacto: Contacto) {
+    this.indexedDBService.update(contacto, 'contactos').subscribe(() => {
+      this.contacto.id = undefined;
+      this.contacto.nombre = '';
+      this.contacto.telefono = '';
+      this.cargarDatos(this.paginacion);
+    });
   }
 
 
 ```
-## Eliminar un dato 
+
+## Eliminar un dato
+
 ```typescript
- eliminar(contacto) {
-    this.indexedDBService
-      .delete('contactos', this.baseDeDatos, contacto.id)
-      .subscribe(() => {
-        this.cargarDatos(this.paginacion);
-      });
+eliminar(contacto) {
+    this.indexedDBService.delete('contactos', contacto.id).subscribe(() => {
+      this.cargarDatos(this.paginacion);
+    });
   }
-```
-## Eliminar todo 
-```typescript
- eliminar(contacto) {
-    this.indexedDBService
-      .delete('contactos', this.baseDeDatos, contacto.id)
-      .subscribe(() => {
-        this.cargarDatos(this.paginacion);
-      });
-  }
-  
 ```
 
+## Eliminar todo
+
+```typescript
+ eliminarTodo() {
+    this.indexedDBService.deleteAll('contactos').subscribe(() => {
+      this.cargarDatos(this.paginacion);
+    });
+  }
+
+```
 
 ### Extra - Contar datos en tabla
 
-``` typescript
- this.indexedDBService
-              .contarDatosEnTabla('contactos', this.baseDeDatos)
-              .then((total) => (this.total = total));
-``` 
+```typescript
+this.indexedDBService
+  .contarDatosEnTabla("contactos")
+  .subscribe(total => this.total = total)
+```
