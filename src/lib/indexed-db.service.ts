@@ -1,12 +1,11 @@
-import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-
+import { Injectable } from "@angular/core"
+import { Observable } from "rxjs"
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: "root",
 })
 export class IndexedDBService {
-  debug = false;
+  debug = false
 
   constructor() {}
 
@@ -25,70 +24,70 @@ export class IndexedDBService {
     opciones: IDBOpciones,
     iDBOpcionesObjectStore: IDBOpcionesObjectStore[]
   ): Observable<IDBDatabase> {
-    return new Observable((subscriber) => {
+    return new Observable(subscriber => {
       // Comprobamos si el navegador es compatible
-      const indexDB = window.indexedDB;
-      this.consoleLog('[ INICIALIZAR ] Navegador compatible: ', !!indexDB);
+      const indexDB = window.indexedDB
+      this.consoleLog("[ INICIALIZAR ] Navegador compatible: ", !!indexDB)
 
       if (indexDB) {
         this.consoleLog(
-          '[ INICIALIZAR ] Incializando con estas opciones:',
+          "[ INICIALIZAR ] Incializando con estas opciones:",
           iDBOpcionesObjectStore
-        );
+        )
 
-        this.consoleLog('[ INICIALIZAR ] Abriendo conexion...');
-        const request = indexDB.open(opciones.nombreBD, opciones.version);
+        this.consoleLog("[ INICIALIZAR ] Abriendo conexion...")
+        const request = indexDB.open(opciones.nombreBD, opciones.version)
         request.onsuccess = () => {
-          this.consoleLog(`[ INICIALIZAR ] Operacion realizada...`);
-          let db = request.result;
-          subscriber.next(db);
-          subscriber.complete();
-        };
+          this.consoleLog(`[ INICIALIZAR ] Operacion realizada...`)
+          let db = request.result
+          subscriber.next(db)
+          subscriber.complete()
+        }
 
         request.onupgradeneeded = (e: any) => {
           this.consoleLog(
             `[ INICIALIZAR ] Configurando base de datos...`,
             iDBOpcionesObjectStore
-          );
+          )
 
-          let db = request.result;
+          let db = request.result
 
-          iDBOpcionesObjectStore.forEach((obs) => {
+          iDBOpcionesObjectStore.forEach(obs => {
             this.consoleLog(
-              '[ INICIALIZAR ] Creando objectStore: ',
+              "[ INICIALIZAR ] Creando objectStore: ",
               obs.opciones.objectStore
-            );
+            )
             this.consoleLog(
-              '[ INICIALIZAR ] Asignando keypath: ',
+              "[ INICIALIZAR ] Asignando keypath: ",
               obs.opciones.keyPath
-            );
+            )
             db.createObjectStore(obs.opciones.objectStore, {
               keyPath: obs.opciones.keyPath,
-            });
-          });
+            })
+          })
 
-          let transaction = e.target.transaction;
+          let transaction = e.target.transaction
           transaction.oncomplete = () => {
             this.consoleLog(
-              '[ INICIALIZAR ] Configuracion terminada con exito...'
-            );
+              "[ INICIALIZAR ] Configuracion terminada con exito..."
+            )
 
-            subscriber.next();
-            subscriber.complete();
-          };
-        };
+            subscriber.next()
+            subscriber.complete()
+          }
+        }
 
-        request.onerror = (error) => {
-          this.consoleLog('[ INICIALIZAR ] Hubo un error...', error);
-          subscriber.error(error);
-        };
+        request.onerror = error => {
+          this.consoleLog("[ INICIALIZAR ] Hubo un error...", error)
+          subscriber.error(error)
+        }
       } else {
         this.consoleLog(
-          '[ INICIALIZAR ] Navegador no compatible con indexedDB...'
-        );
-        subscriber.error('Hubo un error');
+          "[ INICIALIZAR ] Navegador no compatible con indexedDB..."
+        )
+        subscriber.error("Hubo un error")
       }
-    });
+    })
   }
 
   /**
@@ -101,22 +100,22 @@ export class IndexedDBService {
    * @memberof IndexedDBService
    */
   save<T>(data: T, tabla: string, db: IDBDatabase): Observable<this> {
-    return new Observable((subscriber) => {
-      this.consoleLog('[ SAVE ] Guardando datos en ', tabla, data);
-      const request = this.objectStore(tabla, db).add(data);
+    return new Observable(subscriber => {
+      this.consoleLog("[ SAVE ] Guardando datos en ", tabla, data)
+      const request = this.objectStore(tabla, db).add(data)
 
       request.onsuccess = () => {
-        this.consoleLog('[ SAVE ] Datos almacenados con exito');
-        subscriber.next(this);
-        subscriber.complete();
-      };
+        this.consoleLog("[ SAVE ] Datos almacenados con exito")
+        subscriber.next(this)
+        subscriber.complete()
+      }
 
-      request.onerror = (err) => {
-        let msjError = err.target['error'];
-        console.error('[ SAVE ] Error en save: ', msjError, data);
-        subscriber.error(msjError);
-      };
-    });
+      request.onerror = err => {
+        let msjError = err.target["error"]
+        console.error("[ SAVE ] Error en save: ", msjError, data)
+        subscriber.error(msjError)
+      }
+    })
   }
 
   /**
@@ -139,48 +138,53 @@ export class IndexedDBService {
     tabla: string,
     db: IDBDatabase,
     paginacion: {
-      skip: number;
-      limit: number;
+      skip: number
+      limit: number
     } = {
       skip: 0,
       limit: 30,
     }
   ): Observable<T[]> {
-    let datos: T[] = [];
-    return new Observable<T[]>((subscriber) => {
-      this.consoleLog('Buscando todos los datos:', { tabla, paginacion });
-      const request = this.objectStore(tabla, db).openCursor();
-      let contador = 0;
+    let datos: T[] = []
+    return new Observable<T[]>(subscriber => {
+      this.consoleLog("Buscando todos los datos:", { tabla, paginacion })
 
-      let hasSkipped = false;
+      if (paginacion.skip < 0) paginacion.skip = 0
+
+      let request = this.objectStore(tabla, db).openCursor()
+      let contador = 0
+      let hasSkipped = false
 
       request.onsuccess = (e: any) => {
-        this.consoleLog('[ FIND ALL ] Elemento cargado: ', contador);
-        const cursor = e.target.result;
+        this.consoleLog("[ FIND ALL ] Elemento cargado: ", contador)
+        let cursor = e.target.result
 
-        if (!hasSkipped) {
-          hasSkipped = true;
-          console.log("hay cursor", cursor)
-          // No se puede avanzar si no hay datos.
-          cursor?.advance(paginacion.skip + 1);
-          return;
+        //Aqui el skip funciona como contador, no es necesario 
+        // tomar en cuenta el 0 por que se saltaria 0 posiciones y
+        // cursor.advance no acepta 0 como una posición, por lo tanto
+        // si paginacion.skip == 0 entonces no entramos. 
+        if (!hasSkipped && paginacion.skip > 0) {
+          hasSkipped = true
+          cursor.advance(paginacion.skip)
+          return
         }
-
         if (cursor && contador < paginacion.limit) {
-          datos.push(cursor.value);
-          cursor.continue();
-          contador++;
+          datos.push(cursor.value)
+          cursor.continue()
+          contador++
+          console.log({ contador, paginacion })
         } else {
-          subscriber.next(datos);
-          subscriber.complete();
+          console.log("sale")
+          subscriber.next(datos)
+          subscriber.complete()
         }
-      };
+      }
 
-      request.onerror = (err) => {
-        console.error('[ FIND ALL ]  Error en findAll: ', err);
-        subscriber.error(err);
-      };
-    });
+      request.onerror = err => {
+        console.error("[ FIND ALL ]  Error en findAll: ", err)
+        subscriber.error(err)
+      }
+    })
   }
 
   /**
@@ -194,58 +198,58 @@ export class IndexedDBService {
    * @memberof IndexedDBService
    */
   findById<T>(tabla: string, db: IDBDatabase, id: any): Observable<T> {
-    return new Observable<T>((subscriber) => {
-      this.consoleLog('[ FIND_BY_ID ] Buscando por id: ', id, tabla);
+    return new Observable<T>(subscriber => {
+      this.consoleLog("[ FIND_BY_ID ] Buscando por id: ", id, tabla)
 
-      const request = this.objectStore(tabla, db).get(id);
+      const request = this.objectStore(tabla, db).get(id)
 
       request.onsuccess = () => {
-        this.consoleLog('[ FIND_BY_ID ] Se encontro el objeto...');
-        subscriber.next(request.result);
-        subscriber.complete();
-      };
+        this.consoleLog("[ FIND_BY_ID ] Se encontro el objeto...")
+        subscriber.next(request.result)
+        subscriber.complete()
+      }
 
-      request.onerror = (err) => {
-        console.error('[ FIND_BY_ID ] Error en findById: ', id, err);
-        subscriber.error(err);
-      };
-    });
+      request.onerror = err => {
+        console.error("[ FIND_BY_ID ] Error en findById: ", id, err)
+        subscriber.error(err)
+      }
+    })
   }
 
   update<T>(data: T, tabla: string, db: IDBDatabase): Observable<this> {
-    return new Observable((subscriber) => {
-      this.consoleLog('[ UPDATE ] Actualizando datos: ', data, tabla);
-      const request = this.objectStore(tabla, db).put(data);
+    return new Observable(subscriber => {
+      this.consoleLog("[ UPDATE ] Actualizando datos: ", data, tabla)
+      const request = this.objectStore(tabla, db).put(data)
 
       request.onsuccess = () => {
-        this.consoleLog('[ UPDATE ] Datos actualizados correctamente...');
-        subscriber.next(this);
-        subscriber.complete();
-      };
+        this.consoleLog("[ UPDATE ] Datos actualizados correctamente...")
+        subscriber.next(this)
+        subscriber.complete()
+      }
 
-      request.onerror = (err) => {
-        console.error('[ UPDATE ] Error en update: ', data, err);
-        subscriber.error(err);
-      };
-    });
+      request.onerror = err => {
+        console.error("[ UPDATE ] Error en update: ", data, err)
+        subscriber.error(err)
+      }
+    })
   }
 
   delete(tabla: string, db: IDBDatabase, id: any): Observable<this> {
-    return new Observable<null>((subscriber) => {
-      this.consoleLog('[ DELETE ] Eliminado datos: ', id, tabla);
-      const request = this.objectStore(tabla, db).delete(id);
+    return new Observable<null>(subscriber => {
+      this.consoleLog("[ DELETE ] Eliminado datos: ", id, tabla)
+      const request = this.objectStore(tabla, db).delete(id)
 
       request.onsuccess = () => {
-        this.consoleLog('[ DELETE ] Se elimino correctamente...');
-        subscriber.next();
-        subscriber.complete();
-      };
+        this.consoleLog("[ DELETE ] Se elimino correctamente...")
+        subscriber.next()
+        subscriber.complete()
+      }
 
-      request.onerror = (err) => {
-        console.error('[ DELETE ] Error en delete: ', id, err);
-        subscriber.error(err);
-      };
-    });
+      request.onerror = err => {
+        console.error("[ DELETE ] Error en delete: ", id, err)
+        subscriber.error(err)
+      }
+    })
   }
 
   /**
@@ -256,21 +260,21 @@ export class IndexedDBService {
    * @memberof IndexedDBService
    */
   deleteAll(tabla: string, db: IDBDatabase): Observable<this> {
-    return new Observable((subscriber) => {
-      this.consoleLog('[ DELETE ] Eliminado todos los datos: ', tabla);
-      const request = this.objectStore(tabla, db).clear();
+    return new Observable(subscriber => {
+      this.consoleLog("[ DELETE ] Eliminado todos los datos: ", tabla)
+      const request = this.objectStore(tabla, db).clear()
 
       request.onsuccess = () => {
-        this.consoleLog('[ DELETE ] Se elimino todo correctamente...');
-        subscriber.next(this);
-        subscriber.complete();
-      };
+        this.consoleLog("[ DELETE ] Se elimino todo correctamente...")
+        subscriber.next(this)
+        subscriber.complete()
+      }
 
-      request.onerror = (err) => {
-        console.error('[ DELETE ] Error en deleteAll: ', err);
-        subscriber.error(err);
-      };
-    });
+      request.onerror = err => {
+        console.error("[ DELETE ] Error en deleteAll: ", err)
+        subscriber.error(err)
+      }
+    })
   }
 
   /**
@@ -285,31 +289,32 @@ export class IndexedDBService {
   contarDatosEnTabla(tabla: string, db: IDBDatabase) {
     return new Promise<number>((resolve, reject) => {
       this.objectStore(tabla, db).count().onsuccess = function (e) {
-        resolve(e.target['result']);
-      };
-    });
+        resolve(e.target["result"])
+      }
+    })
   }
 
   contarDatos(tabla: string, db: IDBDatabase): Observable<number> {
-    return new Observable((subscriber) => {
-      this.consoleLog('[ COUNT ] Contando datos en tabla: ', tabla);
-      const request = this.objectStore(tabla, db).clear();
+    return new Observable(subscriber => {
+      this.consoleLog("[ COUNT ] Contando datos en tabla: ", tabla)
+      const request = this.objectStore(tabla, db).count()
 
-      this.objectStore(tabla, db).count().onsuccess = function (e) {
-        subscriber.next(e.target['result']);
-        subscriber.complete();
-      };
+      request.onsuccess = e => {
+        console.log("esto es lo que me interesa", e.target["result"])
+        subscriber.next(e.target["result"])
+        subscriber.complete()
+      }
 
-      request.onerror = (err) => {
-        console.error('[ COUNT ] Error en contarDatos: ', err);
-        subscriber.error(err);
-      };
-    });
+      request.onerror = err => {
+        console.error("[ COUNT ] Error en contarDatos: ", err)
+        subscriber.error(err)
+      }
+    })
   }
 
   private consoleLog(...args) {
     if (this.debug) {
-      console.log(...args);
+      console.log(...args)
     }
   }
 
@@ -325,13 +330,13 @@ export class IndexedDBService {
   private objectStore(
     objectStore: string,
     db: IDBDatabase,
-    modo: 'readwrite' | 'readonly' = 'readwrite'
+    modo: "readwrite" | "readonly" = "readwrite"
   ): IDBObjectStore {
     //Se repite el object store
-    this.consoleLog('[ OBJECT STORE ] Obteniendo objectoStore: ', objectStore);
-    let transaction = db.transaction([objectStore], modo);
-    this.consoleLog('[ OBJECT STORE ] Se obtuvo el objectStore:', transaction);
-    return transaction.objectStore(objectStore);
+    this.consoleLog("[ OBJECT STORE ] Obteniendo objectoStore: ", objectStore)
+    let transaction = db.transaction([objectStore], modo)
+    this.consoleLog("[ OBJECT STORE ] Se obtuvo el objectStore:", transaction)
+    return transaction.objectStore(objectStore)
   }
 }
 
@@ -343,7 +348,7 @@ export class IndexedDBService {
  */
 export class IDBOpciones {
   constructor(
-    public nombreBD: string = 'default',
+    public nombreBD: string = "default",
     public version: number = 1
   ) {}
 }
@@ -363,8 +368,8 @@ export class IDBOpcionesObjectStore {
    */
   constructor(
     public opciones: {
-      objectStore: string;
-      keyPath: string;
-    } = { objectStore: 'defaultObjectStore', keyPath: 'defaultKeyPath' }
+      objectStore: string
+      keyPath: string
+    } = { objectStore: "defaultObjectStore", keyPath: "defaultKeyPath" }
   ) {}
 }
