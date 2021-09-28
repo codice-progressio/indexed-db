@@ -1,11 +1,13 @@
 import { Injectable } from "@angular/core"
-import { Observable } from "rxjs"
+import { Observable, ReplaySubject, Subscriber } from "rxjs"
 
 @Injectable({
   providedIn: "root",
 })
 export class IndexedDBService {
   debug = false
+  db: IDBDatabase
+  db_event = new ReplaySubject<IDBDatabase>()
 
   constructor() {}
 
@@ -40,6 +42,8 @@ export class IndexedDBService {
         request.onsuccess = () => {
           this.consoleLog(`[ INICIALIZAR ] Operacion realizada...`)
           let db = request.result
+          this.db = db
+          this.db_event.next(this.db)
           subscriber.next(db)
           subscriber.complete()
         }
@@ -91,6 +95,24 @@ export class IndexedDBService {
   }
 
   /**
+   *Si no se a inicializado la BD, tira un error
+   *
+   * @private
+   * @param {Subscriber<any>} subscriber
+   * @returns
+   * @memberof IndexedDBService
+   */
+  private db_inicializada(subscriber: Subscriber<any>) {
+    if (!this.db) {
+      let msj = "No se ha inicializado la BD"
+      console.error(msj)
+      subscriber.error(msj)
+      return true
+    }
+    return false
+  }
+
+  /**
    *Guarda un dato del tipo que se le pase
    *
    * @template T
@@ -99,10 +121,11 @@ export class IndexedDBService {
    * @returns {Observable<this>}
    * @memberof IndexedDBService
    */
-  save<T>(data: T, tabla: string, db: IDBDatabase): Observable<this> {
+  save<T>(data: T, tabla: string): Observable<this> {
     return new Observable(subscriber => {
+      if (this.db_inicializada(subscriber)) return
       this.consoleLog("[ SAVE ] Guardando datos en ", tabla, data)
-      const request = this.objectStore(tabla, db).add(data)
+      const request = this.objectStore(tabla, this.db).add(data)
 
       request.onsuccess = () => {
         this.consoleLog("[ SAVE ] Datos almacenados con exito")
@@ -136,7 +159,6 @@ export class IndexedDBService {
    */
   find<T>(
     tabla: string,
-    db: IDBDatabase,
     paginacion: {
       skip: number
       limit: number
@@ -147,11 +169,16 @@ export class IndexedDBService {
   ): Observable<T[]> {
     let datos: T[] = []
     return new Observable<T[]>(subscriber => {
-      this.consoleLog("Buscando todos los datos:", { tabla, paginacion })
+      if (this.db_inicializada(subscriber)) return
+
+      let salir = () => {
+        subscriber.next(datos)
+        subscriber.complete()
+      }
 
       if (paginacion.skip < 0) paginacion.skip = 0
+      let request = this.objectStore(tabla, this.db).openCursor()
 
-      let request = this.objectStore(tabla, db).openCursor()
       let contador = 0
       let hasSkipped = false
 
@@ -159,10 +186,10 @@ export class IndexedDBService {
         this.consoleLog("[ FIND ALL ] Elemento cargado: ", contador)
         let cursor = e.target.result
 
-        //Aqui el skip funciona como contador, no es necesario 
+        //Aqui el skip funciona como contador, no es necesario
         // tomar en cuenta el 0 por que se saltaria 0 posiciones y
         // cursor.advance no acepta 0 como una posición, por lo tanto
-        // si paginacion.skip == 0 entonces no entramos. 
+        // si paginacion.skip == 0 entonces no entramos.
         if (!hasSkipped && paginacion.skip > 0) {
           hasSkipped = true
           cursor.advance(paginacion.skip)
@@ -172,16 +199,11 @@ export class IndexedDBService {
           datos.push(cursor.value)
           cursor.continue()
           contador++
-          console.log({ contador, paginacion })
-        } else {
-          console.log("sale")
-          subscriber.next(datos)
-          subscriber.complete()
-        }
+        } else salir()
       }
 
       request.onerror = err => {
-        console.error("[ FIND ALL ]  Error en findAll: ", err)
+        console.error("[ FIND ]  Error en find: ", err)
         subscriber.error(err)
       }
     })
@@ -197,11 +219,11 @@ export class IndexedDBService {
    * @returns {Observable<any>}
    * @memberof IndexedDBService
    */
-  findById<T>(tabla: string, db: IDBDatabase, id: any): Observable<T> {
+  findById<T>(tabla: string, id: any): Observable<T> {
     return new Observable<T>(subscriber => {
+      if (this.db_inicializada(subscriber)) return
       this.consoleLog("[ FIND_BY_ID ] Buscando por id: ", id, tabla)
-
-      const request = this.objectStore(tabla, db).get(id)
+      const request = this.objectStore(tabla, this.db).get(id)
 
       request.onsuccess = () => {
         this.consoleLog("[ FIND_BY_ID ] Se encontro el objeto...")
@@ -216,10 +238,11 @@ export class IndexedDBService {
     })
   }
 
-  update<T>(data: T, tabla: string, db: IDBDatabase): Observable<this> {
+  update<T>(data: T, tabla: string): Observable<this> {
     return new Observable(subscriber => {
+      if (this.db_inicializada(subscriber)) return
       this.consoleLog("[ UPDATE ] Actualizando datos: ", data, tabla)
-      const request = this.objectStore(tabla, db).put(data)
+      const request = this.objectStore(tabla, this.db).put(data)
 
       request.onsuccess = () => {
         this.consoleLog("[ UPDATE ] Datos actualizados correctamente...")
@@ -234,10 +257,11 @@ export class IndexedDBService {
     })
   }
 
-  delete(tabla: string, db: IDBDatabase, id: any): Observable<this> {
+  delete(tabla: string, id: any): Observable<this> {
     return new Observable<null>(subscriber => {
+      if (this.db_inicializada(subscriber)) return
       this.consoleLog("[ DELETE ] Eliminado datos: ", id, tabla)
-      const request = this.objectStore(tabla, db).delete(id)
+      const request = this.objectStore(tabla, this.db).delete(id)
 
       request.onsuccess = () => {
         this.consoleLog("[ DELETE ] Se elimino correctamente...")
@@ -259,10 +283,11 @@ export class IndexedDBService {
    * @returns {Observable<this>} Retorna este servicio
    * @memberof IndexedDBService
    */
-  deleteAll(tabla: string, db: IDBDatabase): Observable<this> {
+  deleteAll(tabla: string): Observable<this> {
     return new Observable(subscriber => {
+      if (this.db_inicializada(subscriber)) return
       this.consoleLog("[ DELETE ] Eliminado todos los datos: ", tabla)
-      const request = this.objectStore(tabla, db).clear()
+      const request = this.objectStore(tabla, this.db).clear()
 
       request.onsuccess = () => {
         this.consoleLog("[ DELETE ] Se elimino todo correctamente...")
@@ -277,30 +302,14 @@ export class IndexedDBService {
     })
   }
 
-  /**
-   *Permite contar los datos de la tabla
-   *
-   * @param {string} tabla El nombre de la tabla
-   * @param {IDBDatabase} db La BD que se inicializo previamente
-   * @returns El total de elementos existentes en la tabla.
-   * @memberof IndexedDBService
-   * @deprecated "Remplazar por contar datos"
-   */
-  contarDatosEnTabla(tabla: string, db: IDBDatabase) {
-    return new Promise<number>((resolve, reject) => {
-      this.objectStore(tabla, db).count().onsuccess = function (e) {
-        resolve(e.target["result"])
-      }
-    })
-  }
-
-  contarDatos(tabla: string, db: IDBDatabase): Observable<number> {
+  contarDatos(tabla: string): Observable<number> {
     return new Observable(subscriber => {
+      if (this.db_inicializada(subscriber)) return
       this.consoleLog("[ COUNT ] Contando datos en tabla: ", tabla)
-      const request = this.objectStore(tabla, db).count()
+
+      const request = this.objectStore(tabla, this.db).count()
 
       request.onsuccess = e => {
-        console.log("esto es lo que me interesa", e.target["result"])
         subscriber.next(e.target["result"])
         subscriber.complete()
       }
