@@ -12,7 +12,7 @@
   "main": "karma.conf.js",
   "scripts": {
     "test": "echo \"Error: no test specified\"",
-    "postversion": "rm -r dist ; ng build indexed-db --prod && mkdir dist && cp -r ../../dist/indexed-db/* dist/",
+    "postversion": "rm -r dist ; ng build indexed-db --configuration  && mkdir dist && cp -r ../../dist/indexed-db/* dist/",
     "publicar": "np --contents=./dist"
   },
   "repository": {
