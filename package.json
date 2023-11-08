@@ -1,6 +1,6 @@
 {
   "name": "@codice-progressio/indexed-db",
-  "version": "1.0.3",
+  "version": "16.0.0",
   "peerDependencies": {
     "@angular/common": "^16.0.5",
     "@angular/core": "^16.0.5"
