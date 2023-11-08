@@ -40,5 +40,8 @@
   "fesm2015": "./dist/fesm2015/codice-progressio-indexed-db.js",
   "typings": "./dist/codice-progressio-indexed-db.d.ts",
   "metadata": "./dist/codice-progressio-indexed-db.metadata.json",
-  "sideEffects": false
+  "sideEffects": false,
+  "engines": {
+    "node": "16.x.x"
+  }
 }
