@@ -1,9 +1,9 @@
 {
   "name": "@codice-progressio/indexed-db",
-  "version": "16.0.1",
+  "version": "18.0.1",
   "peerDependencies": {
-    "@angular/common": "^16.0.0",
-    "@angular/core": "^16.0.0"
+    "@angular/common": "^18.0.0",
+    "@angular/core": "^18.0.0"
   },
   "dependencies": {
     "tslib": "^2.0.0"
@@ -42,6 +42,6 @@
   "metadata": "./dist/codice-progressio-indexed-db.metadata.json",
   "sideEffects": false,
   "engines": {
-    "node": "16.x.x"
+    "node": "20.x.x"
   }
 }
